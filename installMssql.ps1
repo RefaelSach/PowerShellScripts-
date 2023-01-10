@@ -1,6 +1,8 @@
 #The following powershell script, create a directory named "mssql-installs", 
 #copies smms installation files from a network folder via 2 hop authentication
-# installs sql database and sql management studio
+#installs sql database and sql management studio
+#********** note ***********
+# change the vvariables with brackets [   ] to you'r case. 
 
 
 $hostName = "[hostName]"
@@ -9,10 +11,14 @@ $Password = ConvertTo-SecureString "[password]" -AsPlainText -Force
 $Credential = [pscredential]::new($Username,$Password) 
 $Session = New-PSSession -ComputerName $hostName -Credential $Credential
 
-Invoke-Command -ComputerName $hostName -Credential $Credential -ScriptBlock {Enable-PSRemoting –Force}
-Invoke-Command -ComputerName $hostName -Credential $Credential -ScriptBlock {Enable-WSManCredSSP -Role Client -DelegateComputer "[RemotePsHsot.fqdn]" -Force}
+#Perquisites for remote invoking
+Invoke-Command -ComputerName $hostName -Credential $Credential -ScriptBlock {
+Enable-PSRemoting –Force
+Enable-WSManCredSSP -Role Client -DelegateComputer "[pshost.fqdn]" -Force
+New-ItemProperty -Path "HKLM:\Software\Microsoft\Cryptography\Protect\Providers\df9d8cd0-1501-11d1-8c7a-00c04fc297eb" -Name "ProtectionPolicy" -PropertyType "DWORD" -Value "1" 
+} 
 
-#Creates new dir
+#Creates new dir and copies files from share folder if doesn't exists
  if (-not(Invoke-Command -ComputerName $hostName -Credential $Credential -ScriptBlock {Test-Path -Path "C:\mssql-installs"})){ 
     Invoke-Command -ComputerName $hostName -Credential $Credential -ScriptBlock {New-Item "C:\mssql-installs" -ItemType Directory }
     Write-Host "Successfully created mssql-installs dir"
